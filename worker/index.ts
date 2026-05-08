@@ -141,6 +141,7 @@ const INIT_SQL = `
     title TEXT NOT NULL,
     image_url TEXT,
     prompt TEXT,
+    params TEXT,
     created_at INTEGER
   );
   CREATE TABLE IF NOT EXISTS settings (
@@ -368,10 +369,22 @@ export default {
       try { await db.prepare("ALTER TABLE chains ADD COLUMN username TEXT").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE inspirations ADD COLUMN user_id TEXT").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE inspirations ADD COLUMN username TEXT").run(); } catch (e) {}
-      try { await db.prepare("ALTER TABLE chains ADD COLUMN variable_values TEXT DEFAULT '{}'").run(); } catch (e) {}
+try { await db.prepare("ALTER TABLE chains ADD COLUMN variable_values TEXT DEFAULT '{}'").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE artists ADD COLUMN preview_url TEXT").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE artists ADD COLUMN benchmarks TEXT DEFAULT '[]'").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE chains ADD COLUMN type TEXT DEFAULT 'style'").run(); } catch (e) {}
+      
+      // Inspirations 表迁移：添加 params 列（存储完整生成参数）
+      try {
+        await db.prepare("ALTER TABLE inspirations ADD COLUMN params TEXT").run();
+        console.log('[initDB] params column added to inspirations table');
+      } catch (e: any) {
+        if (e.message && e.message.includes('duplicate column name')) {
+          console.log('[initDB] params column already exists in inspirations table');
+        } else {
+          console.error('[initDB] Failed to add params column:', e.message);
+        }
+      }
 
       // 创建访问日志表
       try {
@@ -969,15 +982,45 @@ export default {
       // Inspirations
       if (path === '/api/inspirations' && method === 'GET') {
         const res = await db.prepare('SELECT * FROM inspirations ORDER BY created_at DESC').all();
-        return json(res.results.map((i: any) => ({ id: i.id, userId: i.user_id, username: i.username, title: i.title, imageUrl: i.image_url, prompt: i.prompt, createdAt: i.created_at })));
+        return json(res.results.map((i: any) => ({
+          id: i.id,
+          userId: i.user_id,
+          username: i.username,
+          title: i.title,
+          imageUrl: i.image_url,
+          prompt: i.prompt,
+          params: i.params ? JSON.parse(i.params) : undefined,
+          createdAt: i.created_at
+        })));
       }
       if (path === '/api/inspirations' && method === 'POST') {
         if (currentUser.role === 'guest') return error('Forbidden', 403);
-        const body = await request.json() as any;
-        let imageUrl = body.imageUrl;
-        if (imageUrl && imageUrl.startsWith('data:')) { try { imageUrl = await processImageUpload(env, imageUrl, 'inspirations', body.id || crypto.randomUUID(), currentUser); } catch (e: any) { return error(e.message, 413); } }
-        await db.prepare('INSERT OR REPLACE INTO inspirations (id, user_id, username, title, image_url, prompt, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(body.id, currentUser.id, currentUser.username, body.title, imageUrl, body.prompt, body.createdAt).run();
-        return json({ success: true });
+        try {
+          const body = await request.json() as any;
+          let imageUrl = body.imageUrl;
+          if (imageUrl && imageUrl.startsWith('data:')) { 
+            try { imageUrl = await processImageUpload(env, imageUrl, 'inspirations', body.id || crypto.randomUUID(), currentUser); } 
+            catch (e: any) { return error(e.message, 413); } 
+          }
+          
+          let paramsJson: string | null = null;
+          if (body.params) {
+            try {
+              paramsJson = JSON.stringify(body.params);
+            } catch (e: any) {
+              console.error('Failed to serialize params:', e);
+              paramsJson = null;
+            }
+          }
+          
+          await db.prepare('INSERT OR REPLACE INTO inspirations (id, user_id, username, title, image_url, prompt, params, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+            .bind(body.id, currentUser.id, currentUser.username, body.title, imageUrl, body.prompt, paramsJson, body.createdAt)
+            .run();
+          return json({ success: true });
+        } catch (e: any) {
+          console.error('POST /api/inspirations error:', e.message, e.stack);
+          return error(e.message || 'Internal Server Error', 500);
+        }
       }
       if (path === '/api/inspirations/bulk-delete' && method === 'POST') {
           if (currentUser.role === 'guest') return error('Forbidden', 403);

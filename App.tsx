@@ -373,7 +373,7 @@ const App = () => {
           onLogout={handleLogout}
         />;
       case 'history':
-        return <GenHistory currentUser={currentUser} notify={notify} onNavigateToPlayground={() => handleNavigate('playground')} />;
+        return <GenHistory currentUser={currentUser} notify={notify} onNavigateToPlayground={() => handleNavigate('playground')} onRefreshInspiration={() => loadInspirations(true)} />;
       case 'playground':
         if (!playgroundChain) return <div>Loading...</div>;
         return <ChainEditor

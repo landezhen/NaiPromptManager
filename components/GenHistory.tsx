@@ -11,9 +11,10 @@ interface GenHistoryProps {
     currentUser: User;
     notify: (msg: string, type?: 'success' | 'error') => void;
     onNavigateToPlayground?: () => void;
+    onRefreshInspiration?: () => void;
 }
 
-export const GenHistory: React.FC<GenHistoryProps> = ({ currentUser, notify, onNavigateToPlayground }) => {
+export const GenHistory: React.FC<GenHistoryProps> = ({ currentUser, notify, onNavigateToPlayground, onRefreshInspiration }) => {
     const [items, setItems] = useState<LocalGenItem[]>([]);
     const [lightbox, setLightbox] = useState<LocalGenItem | null>(null);
     const [isPublishing, setIsPublishing] = useState(false);
@@ -254,6 +255,7 @@ export const GenHistory: React.FC<GenHistoryProps> = ({ currentUser, notify, onN
                 title: publishTitle,
                 imageUrl: lightbox.imageUrl,
                 prompt: lightbox.prompt,
+                params: lightbox.params,
                 userId: currentUser.id,
                 username: currentUser.username,
                 createdAt: Date.now()
@@ -261,8 +263,9 @@ export const GenHistory: React.FC<GenHistoryProps> = ({ currentUser, notify, onN
             notify('发布成功！已加入灵感图库');
             setIsPublishing(false);
             setPublishTitle('');
-            setLightbox(null); // Close lightbox
-            setShowSuccessModal(true); // Show Success Modal
+            setLightbox(null);
+            setShowSuccessModal(true);
+            onRefreshInspiration?.();
         } catch (e: any) {
             notify('发布失败: ' + e.message, 'error');
             setIsPublishing(false);
@@ -625,7 +628,7 @@ export const GenHistory: React.FC<GenHistoryProps> = ({ currentUser, notify, onN
                             onClick={() => setShowSuccessModal(false)}
                             className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold shadow-lg transition-all"
                         >
-                            好哒喵~
+                            确定
                         </button>
                     </div>
                 </div>

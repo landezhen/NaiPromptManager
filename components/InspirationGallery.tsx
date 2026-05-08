@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../services/dbService';
-import { Inspiration, User } from '../types';
+import { Inspiration, User, NAIParams } from '../types';
 import { extractMetadata, parseNovelAIMetadata, ParsedNAIData, IMPORT_SESSION_KEY } from '../services/metadataService';
 import { ParamsViewer } from './ParamsViewer';
 
@@ -75,12 +75,20 @@ const InspirationLightbox: React.FC<InspirationLightboxProps> = ({
     // 尝试解析灵感图的 prompt 字符串，提取结构化参数，使用 useMemo 避免重复重排
     const parsedData: ParsedNAIData | null = useMemo(() => {
         try {
+            if (lightboxImg.item.params) {
+                const parsedFromPrompt = lightboxImg.item.prompt ? parseNovelAIMetadata(lightboxImg.item.prompt) : null;
+                return {
+                    prompt: parsedFromPrompt?.prompt || lightboxImg.item.prompt,
+                    negativePrompt: parsedFromPrompt?.negativePrompt || '',
+                    params: lightboxImg.item.params
+                };
+            }
             if (lightboxImg.item.prompt && lightboxImg.item.prompt.trim()) {
                 return parseNovelAIMetadata(lightboxImg.item.prompt);
             }
         } catch { /* 解析失败不影响展示 */ }
         return null;
-    }, [lightboxImg.item.prompt]);
+    }, [lightboxImg.item.prompt, lightboxImg.item.params]);
 
     return (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 md:p-8" onClick={() => setLightboxImg(null)}>
@@ -218,11 +226,19 @@ export const InspirationGallery: React.FC<InspirationGalleryProps> = ({ currentU
 
   const handleUpload = async () => {
       if (!upTitle || !upImg) return;
+      let parsedParams: NAIParams | undefined = undefined;
+      if (upPrompt && upPrompt.trim()) {
+          try {
+              const parsed = parseNovelAIMetadata(upPrompt);
+              parsedParams = parsed.params;
+          } catch { /* 解析失败时 params 为 undefined */ }
+      }
       await db.saveInspiration({
           id: crypto.randomUUID(),
           title: upTitle,
           imageUrl: upImg,
           prompt: upPrompt,
+          params: parsedParams,
           userId: currentUser.id,
           username: currentUser.username,
           createdAt: Date.now()

@@ -91,6 +91,7 @@ export interface Inspiration {
   title: string;
   imageUrl: string; // Base64 Data URI
   prompt: string;
+  params?: NAIParams; // 完整生成参数（含 characters），可选字段兼容旧数据
   createdAt: number;
 }
 

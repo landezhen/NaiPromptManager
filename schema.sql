@@ -56,6 +56,7 @@ CREATE TABLE inspirations (
   title TEXT NOT NULL,
   image_url TEXT,
   prompt TEXT,
+  params TEXT,
   created_at INTEGER
 );
 
