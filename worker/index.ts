@@ -369,22 +369,12 @@ export default {
       try { await db.prepare("ALTER TABLE chains ADD COLUMN username TEXT").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE inspirations ADD COLUMN user_id TEXT").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE inspirations ADD COLUMN username TEXT").run(); } catch (e) {}
-try { await db.prepare("ALTER TABLE chains ADD COLUMN variable_values TEXT DEFAULT '{}'").run(); } catch (e) {}
+      try { await db.prepare("ALTER TABLE inspirations ADD COLUMN params TEXT").run(); } catch (e) {}
+      try { await db.prepare("ALTER TABLE chains ADD COLUMN variable_values TEXT DEFAULT '{}'").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE artists ADD COLUMN preview_url TEXT").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE artists ADD COLUMN benchmarks TEXT DEFAULT '[]'").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE chains ADD COLUMN type TEXT DEFAULT 'style'").run(); } catch (e) {}
       
-      // Inspirations 表迁移：添加 params 列（存储完整生成参数）
-      try {
-        await db.prepare("ALTER TABLE inspirations ADD COLUMN params TEXT").run();
-        console.log('[initDB] params column added to inspirations table');
-      } catch (e: any) {
-        if (e.message && e.message.includes('duplicate column name')) {
-          console.log('[initDB] params column already exists in inspirations table');
-        } else {
-          console.error('[initDB] Failed to add params column:', e.message);
-        }
-      }
 
       // 创建访问日志表
       try {
