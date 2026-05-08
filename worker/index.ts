@@ -985,24 +985,25 @@ export default {
       }
       if (path === '/api/inspirations' && method === 'POST') {
         if (currentUser.role === 'guest') return error('Forbidden', 403);
+        
+        const body = await request.json() as any;
+        let imageUrl = body.imageUrl;
+        if (imageUrl && imageUrl.startsWith('data:')) { 
+          try { imageUrl = await processImageUpload(env, imageUrl, 'inspirations', body.id || crypto.randomUUID(), currentUser); } 
+          catch (e: any) { return error(e.message, 413); } 
+        }
+        
+        let paramsJson: string | null = null;
+        if (body.params) {
+          try {
+            paramsJson = JSON.stringify(body.params);
+          } catch (e: any) {
+            console.error('Failed to serialize params:', e);
+            paramsJson = null;
+          }
+        }
+        
         try {
-          const body = await request.json() as any;
-          let imageUrl = body.imageUrl;
-          if (imageUrl && imageUrl.startsWith('data:')) { 
-            try { imageUrl = await processImageUpload(env, imageUrl, 'inspirations', body.id || crypto.randomUUID(), currentUser); } 
-            catch (e: any) { return error(e.message, 413); } 
-          }
-          
-          let paramsJson: string | null = null;
-          if (body.params) {
-            try {
-              paramsJson = JSON.stringify(body.params);
-            } catch (e: any) {
-              console.error('Failed to serialize params:', e);
-              paramsJson = null;
-            }
-          }
-          
           await db.prepare('INSERT OR REPLACE INTO inspirations (id, user_id, username, title, image_url, prompt, params, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
             .bind(body.id, currentUser.id, currentUser.username, body.title, imageUrl, body.prompt, paramsJson, body.createdAt)
             .run();
@@ -1011,13 +1012,6 @@ export default {
           if (e.message && e.message.includes('no column named')) {
             await initDB();
             try {
-              const body = await request.json() as any;
-              let imageUrl = body.imageUrl;
-              if (imageUrl && imageUrl.startsWith('data:')) { 
-                imageUrl = await processImageUpload(env, imageUrl, 'inspirations', body.id || crypto.randomUUID(), currentUser);
-              }
-              let paramsJson: string | null = null;
-              if (body.params) paramsJson = JSON.stringify(body.params);
               await db.prepare('INSERT OR REPLACE INTO inspirations (id, user_id, username, title, image_url, prompt, params, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
                 .bind(body.id, currentUser.id, currentUser.username, body.title, imageUrl, body.prompt, paramsJson, body.createdAt)
                 .run();
