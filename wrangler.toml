@@ -9,7 +9,7 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "nai-db"
-database_id = "04b0c4f6-8b3b-4e1d-a880-2dfe4f7d75f7"
+database_id = "f0223bc6-64ba-4a15-bc1b-5bdd128a0626"
 
 [vars]
 GUEST_PASSCODE = "nai_guest_123" # 默认游客口令，部署后请在后台修改或修改此处
